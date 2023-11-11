@@ -1,0 +1,14 @@
+WHITESPACE = _{ " " | "\t" | NEWLINE }
+// COMMENT = { '#' ~ .* ~ NEWLINE }
+
+ident = @{ ASCII_ALPHANUMERIC+ }
+
+string = { (!"\"" ~ ANY)+ }
+string_with_quotes = _{ "\"" ~ string ~ "\"" }
+
+mode = { "append" | "speak" }
+folder = { "folder" ~ string_with_quotes ~ "(" ~ mode ~ ")" ~ string_with_quotes+ ~ ";"}
+
+assignment = { ident ~ "=" ~ string_with_quotes }
+
+program = _{ (WHITESPACE+ | folder | assignment)+ }
