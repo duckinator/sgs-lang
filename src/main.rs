@@ -80,10 +80,8 @@ folder "Example Folder" (append)
 ;
     "#;
 
-    match parse(system) {
-        Ok(system) => println!("{:?}", system),
-        Err(msg) => panic!("{}", msg),
-    }
+    let system = parse(system).unwrap();
+    println!("{:?}", system);
 }
 
 
