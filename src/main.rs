@@ -15,25 +15,26 @@ enum FolderMode {
 
 #[derive(Debug)]
 struct Folder<'a> {
-    mode: FolderMode,
+    name: String,
+    default: bool,
+    immediate: bool,
+    rows: usize,
+    cols: usize,
     buttons: Vec<&'a str>,
 }
 
 #[derive(Debug)]
 struct System<'a> {
-    name: &'a str,
-    description: &'a str,
-    default: &'a str,
-    rows: u8,
-    cols: u8,
-    folders: HashMap<&'a str, Folder<'a>>,
+    name: String,
+    description: String,
+    folders: Vec<Folder<'a>>,
 }
 
 fn parse(system: &str) -> Result<System, &'static str> {
     let pairs = SystemParser::parse(Rule::program, system).unwrap();
 
     let mut metadata: HashMap<&str, &str> = HashMap::new();
-    let mut folders: HashMap<&str, Folder> = HashMap::new();
+    let mut folders: Vec<Folder> = Vec::new();
 
     // Because ident_list is silent, the iterator will contain idents
     for pair in pairs {
@@ -48,28 +49,31 @@ fn parse(system: &str) -> Result<System, &'static str> {
             Rule::folder => {
                 let mut inner = pair.into_inner();
                 let name = inner.next().expect("Got Rule::folder with no name?").as_str();
-                let mode = match inner.next().expect("Got Rule::folder with no mode?").as_str() {
-                    "append" => FolderMode::Append,
-                    "speak" => FolderMode::Speak,
-                    _ => panic!("Valid modes are 'append' and 'speak'"),
+                let immediate = match inner.next().expect("Got Rule::folder with no mode?").as_str() {
+                    "append" => false,
+                    "immediate" => true,
+                    _ => panic!("Valid modes are 'append' and 'immediate'"),
                 };
 
                 let buttons: Vec<&str> = inner.map(|x| x.as_str()).collect();
-                folders.insert(name, Folder { mode, buttons });
+
+                // The grammar requires all assignments to be before all folders.
+                // This allows us to specify data at the system level, but
+                // store it internally in each +Folder+ for simplicity.
+                let default = metadata.get("default").ok_or("Expected 'default' to be specified.")? == &name;
+                let rows = metadata.get("rows").ok_or("Expected 'rows' to be specified.")?.parse().unwrap();
+                let cols = metadata.get("cols").ok_or("Expected 'cols' to be specified.")?.parse().unwrap();
+
+                folders.push(Folder { name: name.to_string(), default, immediate, rows, cols, buttons });
             },
             _ => panic!("Should only get an assignment or a folder."),
         }
     }
 
-    let name = metadata.get("name").ok_or("Expected 'name' to be specified.")?;
-    let description = metadata.get("description").ok_or("Expected 'description' to be specified.")?;
-    let default = metadata.get("default").ok_or("Expected 'default' to be specified.")?;
+    let name = metadata.get("name").ok_or("Expected 'name' to be specified.")?.to_string();
+    let description = metadata.get("description").ok_or("Expected 'description' to be specified.")?.to_string();
 
-    println!("{:?}", metadata);
-    let rows = metadata.get("rows").ok_or("Expected 'rows' to be specified.")?.parse().unwrap();
-    let cols = metadata.get("cols").ok_or("Expected 'cols' to be specified.")?.parse().unwrap();
-
-    Ok(System { name, description, default, rows, cols, folders })
+    Ok(System { name, description, folders })
 }
 
 fn main() {
@@ -78,7 +82,10 @@ name = "Example system."
 description = "This is an example system."
 default = "Example Folder"
 
-folder "foo" (append) "asdf";
+rows = 2
+cols = 3
+
+folder "foo" (append) "asdf" "fdsa" "beep" "boop" "meep" "moop";
 
 folder "Example Folder" (append)
         "1"     "2"     "3"
@@ -101,6 +108,8 @@ fn test_parser() {
         rows = 2
         cols = 3
 
+        folder "foo" (immediate) "asdf" "fdsa" "beep" "boop" "meep" "moop";
+
         folder "Example Folder" (append)
                 "0"     "1"     "2"
                 "3"     "4"     "5"
@@ -111,13 +120,27 @@ fn test_parser() {
 
     assert_eq!("Example System", system.name);
     assert_eq!("This is an example system.", system.description);
-    assert_eq!("Example Folder", system.default);
 
-    assert_eq!(2, system.rows);
-    assert_eq!(3, system.cols);
+    assert_eq!(2, system.folders.len());
 
-    let folder = &system.folders["Example Folder"];
-    assert_eq!(FolderMode::Append, folder.mode);
+    let folder = &system.folders[0];
+    assert_eq!(false, folder.default);
+    assert_eq!(true, folder.immediate);
+    assert_eq!(2, folder.rows);
+    assert_eq!(3, folder.cols);
+    assert_eq!(6, folder.buttons.len());
+    assert_eq!("asdf", folder.buttons[0]);
+    assert_eq!("fdsa", folder.buttons[1]);
+    assert_eq!("beep", folder.buttons[2]);
+    assert_eq!("boop", folder.buttons[3]);
+    assert_eq!("meep", folder.buttons[4]);
+    assert_eq!("moop", folder.buttons[5]);
+
+    let folder = &system.folders[1];
+    assert_eq!(true, folder.default);
+    assert_eq!(false, folder.immediate);
+    assert_eq!(2, folder.rows);
+    assert_eq!(3, folder.cols);
     assert_eq!(6, folder.buttons.len());
     assert_eq!("0", folder.buttons[0]);
     assert_eq!("1", folder.buttons[1]);

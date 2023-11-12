@@ -12,4 +12,4 @@ folder = { "folder" ~ string_with_quotes ~ "(" ~ mode ~ ")" ~ string_with_quotes
 digits = @{ ASCII_DIGIT+ }
 assignment = { ident ~ "=" ~ (digits | string_with_quotes) }
 
-program = _{ (WHITESPACE+ | folder | assignment)+ }
+program = _{ WHITESPACE+ ~ assignment+ ~ folder+ ~ WHITESPACE* }
