@@ -6,7 +6,7 @@ ident = @{ ASCII_ALPHANUMERIC+ }
 string = { (!"\"" ~ ANY)+ }
 string_with_quotes = _{ "\"" ~ string ~ "\"" }
 
-mode = { "append" | "speak" }
+mode = { "append" | "immediate" }
 folder = { "folder" ~ string_with_quotes ~ "(" ~ mode ~ ")" ~ string_with_quotes+ ~ ";"}
 
 digits = @{ ASCII_DIGIT+ }
