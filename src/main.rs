@@ -52,7 +52,7 @@ fn parse(system: &str) -> Result<System, Box<dyn std::error::Error>> {
                 let immediate = match inner.next().ok_or("Got Rule::folder with no mode?")?.as_str() {
                     "append" => false,
                     "immediate" => true,
-                    _ => panic!("Valid modes are 'append' and 'immediate'"),
+                    _ => unreachable!("The only folder modes are \"append\" or \"immediate\". This error should be impossible."),
                 };
 
                 let buttons: Vec<&str> = inner.map(|x| x.as_str()).collect();
@@ -66,7 +66,7 @@ fn parse(system: &str) -> Result<System, Box<dyn std::error::Error>> {
 
                 folders.push(Folder { name: name.to_string(), default, immediate, rows, cols, buttons });
             },
-            _ => panic!("Should only get an assignment or a folder."),
+            _ => unreachable!("The only language constructs are ASSIGNMENTS and FOLDERS. This error should be impossible."),
         }
     }
 
@@ -148,4 +148,21 @@ fn test_parser() {
     assert_eq!("3", folder.buttons[3]);
     assert_eq!("4", folder.buttons[4]);
     assert_eq!("5", folder.buttons[5]);
+}
+
+#[test]
+fn test_invalid_folder_mode() {
+    let broken_system = r#"
+        name = "foo"
+
+        folder "foo" (definitely-not-valid)
+            "beep" "boop"
+        ;
+    "#;
+
+    let broken_system = parse(broken_system);
+
+    // This should be a pest::error::ErrorVariant::ParserError,
+    // but I don't know how to test for that.
+    assert!(broken_system.is_err());
 }
