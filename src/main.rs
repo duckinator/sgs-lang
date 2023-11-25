@@ -30,8 +30,8 @@ struct System<'a> {
     folders: Vec<Folder<'a>>,
 }
 
-fn parse(system: &str) -> Result<System, &'static str> {
-    let pairs = SystemParser::parse(Rule::program, system).unwrap();
+fn parse(system: &str) -> Result<System, Box<dyn std::error::Error>> {
+    let pairs = SystemParser::parse(Rule::program, system)?;
 
     let mut metadata: HashMap<&str, &str> = HashMap::new();
     let mut folders: Vec<Folder> = Vec::new();
@@ -41,15 +41,15 @@ fn parse(system: &str) -> Result<System, &'static str> {
         match pair.as_rule() {
             Rule::assignment => {
                 let mut inner = pair.into_inner();
-                let key = inner.next().expect("Got Rule::assignment with no inner items?").as_str();
-                let value = inner.next().expect("Got Rule::assignment with only one inner item?").as_str();
+                let key = inner.next().ok_or("Got Rule::assignment with no inner items?")?.as_str();
+                let value = inner.next().ok_or("Got Rule::assignment with only one inner item?")?.as_str();
 
                 metadata.insert(key, value);
             },
             Rule::folder => {
                 let mut inner = pair.into_inner();
-                let name = inner.next().expect("Got Rule::folder with no name?").as_str();
-                let immediate = match inner.next().expect("Got Rule::folder with no mode?").as_str() {
+                let name = inner.next().ok_or("Got Rule::folder with no name?")?.as_str();
+                let immediate = match inner.next().ok_or("Got Rule::folder with no mode?")?.as_str() {
                     "append" => false,
                     "immediate" => true,
                     _ => panic!("Valid modes are 'append' and 'immediate'"),
@@ -61,8 +61,8 @@ fn parse(system: &str) -> Result<System, &'static str> {
                 // This allows us to specify data at the system level, but
                 // store it internally in each +Folder+ for simplicity.
                 let default = metadata.get("default").ok_or("Expected 'default' to be specified.")? == &name;
-                let rows = metadata.get("rows").ok_or("Expected 'rows' to be specified.")?.parse().unwrap();
-                let cols = metadata.get("cols").ok_or("Expected 'cols' to be specified.")?.parse().unwrap();
+                let rows = metadata.get("rows").ok_or("Expected 'rows' to be specified.")?.parse()?;
+                let cols = metadata.get("cols").ok_or("Expected 'cols' to be specified.")?.parse()?;
 
                 folders.push(Folder { name: name.to_string(), default, immediate, rows, cols, buttons });
             },
