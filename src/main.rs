@@ -27,6 +27,9 @@ struct Folder<'a> {
 struct System<'a> {
     name: String,
     description: String,
+    default: String,
+    rows: usize,
+    cols: usize,
     folders: Vec<Folder<'a>>,
 }
 
@@ -72,8 +75,11 @@ fn parse(system: &str) -> Result<System, Box<dyn std::error::Error>> {
 
     let name = metadata.get("name").ok_or("Expected 'name' to be specified.")?.to_string();
     let description = metadata.get("description").ok_or("Expected 'description' to be specified.")?.to_string();
+    let default = metadata.get("default").ok_or("Expected 'default' to be specified.")?.to_string();
+    let rows: usize = metadata.get("rows").ok_or("Expected 'rows' to be specified.")?.parse()?;
+    let cols: usize = metadata.get("cols").ok_or("Expected 'cols' to be specified.")?.parse()?;
 
-    Ok(System { name, description, folders })
+    Ok(System { name, description, default, rows, cols, folders })
 }
 
 fn main() {
@@ -148,6 +154,21 @@ fn test_parser() {
     assert_eq!("3", folder.buttons[3]);
     assert_eq!("4", folder.buttons[4]);
     assert_eq!("5", folder.buttons[5]);
+}
+
+#[test]
+fn test_incomplete_metadata() {
+    let broken_system = r#"
+        name = "foo"
+
+        folder "foo" (append)
+            "beep boop"
+        ;
+    "#;
+
+    let broken_system = parse(broken_system);
+
+    assert!(broken_system.is_err());
 }
 
 #[test]
